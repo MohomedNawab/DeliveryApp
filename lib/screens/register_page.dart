@@ -1,69 +1,105 @@
-import 'package:deliveryapp/constants.dart';
-import 'package:deliveryapp/widget/custom_btn.dart';
-import 'package:deliveryapp/widget/custom_input.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 
+import '../constants.dart';
+import '../widget/custom_btn.dart';
+import '../widget/custom_input.dart';
 
 class RegisterPage extends StatefulWidget {
-  const RegisterPage({super.key});
-
+  const RegisterPage({Key? key}) : super(key: key);
 
   @override
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  //final FirebaseServices _firebaseServices = FirebaseServices();
 
-  //Build an alert dialog to display some errors
-  Future<void> _alertDialogBuilder() async {
+  // Future _createUser() async {
+  //   await FirebaseFirestore.instance.collection("Users")
+  //       .doc(FirebaseAuth.instance.currentUser!.uid)
+  //       .set({
+  //     "cartTotal": 0,
+  //     "name": "Aadhil",
+  //     "Address": "Address",
+  //   });
+  // }
+
+  //Build an alert to dialog to display some error
+  Future<void> _alertDialogBuilder(String error) async {
     return showDialog(
         context: context,
         barrierDismissible: false,
         builder: (context) {
-      return AlertDialog(
-        title: Text("Error"),
-        content: Container (
-          child: Text("Just Some Random text for now"),
-        ),
-        actions: [
-          TextButton(
-            child: Text("Close Dialog"),
-            onPressed: () {
-              Navigator.pop(context);
-            }
-          )
-        ],
-      );
-    });
+          return AlertDialog(
+            title: Text("Error"),
+            content: Container(
+                child: Text(error)
+            ),
+            actions: [
+              TextButton(
+                  onPressed: ()=> Navigator.pop(context),
+                  child: Text("Close Dialog")
+              )
+            ],
+          );
+        }
+    );
   }
 
-  //Create a new user account
+  // Create a new user account
   Future<String?> _createAccount() async {
     try {
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: _registerEmail, password: _registerPassword);
+          email: _registerEmail.trim(),
+          password: _registerPassword.trim());
+      //_createUser();
       return null;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch(e) {
       if (e.code == 'weak-password') {
-        return'The Password Provided is too weak.';
-      } else if (e.code == "Email Already in Use") {
-        return "The Account Already Exist for that Email.";
+        return 'The password provided is too weak.';
+      } else if (e.code == 'email-already-in-use') {
+        return 'The account already exists for that email.';
       }
       return e.message;
-    } catch (e) {return e.toString();}
-
+    } catch (e){
+      return e.toString();
+    }
   }
-}
 
-  //Form Input Field Values
+  void _submitForm() async {
+
+    // Set the form to loading state
+    setState(() {
+      _registerFormLoading = true;
+    });
+
+    // Run the create account method
+    String? _createAccountFeedback = await _createAccount();
+
+    // If the string is not null, we got error while create account.
+    if(_createAccountFeedback != null) {
+      _alertDialogBuilder(_createAccountFeedback);
+
+      // Set the form to regular state (not loading).
+      setState(() {
+        _registerFormLoading = false;
+      });
+    } else {
+      // The String value was null, user is logged in.
+      Navigator.pop(context);
+    }
+  }
+
+  // Default form loading state
+  bool _registerFormLoading = false;
+
+  // Form input field values
   String _registerEmail = "";
   String _registerPassword = "";
 
   // Focus Node for input fields
-  FocusNode? _passwordFocusNode;
+  late FocusNode _passwordFocusNode;
 
   @override
   void initState() {
@@ -73,74 +109,72 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
-    _passwordFocusNode = FocusNode();
+    _passwordFocusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        body: SafeArea(
+      body: SafeArea(
           child: Container(
             width: double.infinity,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: EdgeInsets.only(
-                    top: 20.0,
-                  ),
-                  child: Text("Need Tastey Foods? \n Create A New Account",
+                  padding: const EdgeInsets.only(top: 24.0),
+                  child: Text(
+                    "Create A New Account",
                     textAlign: TextAlign.center,
-                    style: Constants.boldHeading,),
+                    style: Constants.boldHeading,
+                  ),
                 ),
                 Column(
                   children: [
                     CustomInput(
-                      hintText: "Email",
-                      onChanged: (value){
+                      hintText: 'Email',
+                      onChanged: (value) {
                         _registerEmail = value;
                       },
-                      onSubmitted: (value){
-                        _passwordFocusNode?.requestFocus();
+                      onSubmitted: (value) {
+                        _passwordFocusNode.requestFocus();
                       },
-
+                      textInputAction: TextInputAction.next,
                     ),
                     CustomInput(
-                      hintText: "Password",
-                      onChanged: (value){
+                      hintText: 'Password',
+                      onChanged: (value) {
                         _registerPassword = value;
+                      },
+                      onSubmitted: (value) {
+                        _submitForm();
                       },
                       focusNode: _passwordFocusNode,
                       isPasswordField: true,
                     ),
                     CustomBtn(
-                      text: "Register",
-                      onPressed: (){
-                        _alertDialogBuilder();
-                        }, outlineBtn: false
+                      text: 'Create New Account',
+                      onPressed: () {
+                        _submitForm();
+                      },
+                      isLoading: _registerFormLoading,
                     )
-
                   ],
                 ),
                 Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: 8.0,
-                  ),
+                  padding: const EdgeInsets.only(bottom: 16.0),
                   child: CustomBtn(
-                    text: "Back to Login",
-                    onPressed: (){
-                      Navigator.pop(context);
-                    },
-                    outlineBtn: true,
+                      text: 'Back To Login',
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      outlineBtn: true
                   ),
-                ),
+                )
               ],
             ),
-          ),
-        ),
+          )),
     );
   }
 }
-
-
